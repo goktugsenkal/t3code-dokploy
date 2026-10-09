@@ -1,0 +1,17 @@
+# Local test build. Dokploy uses blueprint/t3code instead.
+#   docker compose up --build
+services:
+  t3code:
+    build:
+      context: .
+      args:
+        T3_VERSION: 0.0.45
+    ports:
+      - "127.0.0.1:3773:3773"
+    volumes:
+      - t3code-home:/home/t3
+      - t3code-workspace:/workspace
+
+volumes:
+  t3code-home:
+  t3code-workspace:

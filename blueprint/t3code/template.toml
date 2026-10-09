@@ -1,0 +1,11 @@
+[variables]
+main_domain = "${domain}"
+
+[config]
+[[config.domains]]
+serviceName = "t3code"
+port = 3773
+host = "${main_domain}"
+https = true
+
+[config.env]

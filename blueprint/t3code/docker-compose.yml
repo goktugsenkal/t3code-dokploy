@@ -1,0 +1,14 @@
+services:
+  t3code:
+    image: ghcr.io/goktugsenkal/t3code:0.0.45
+    restart: unless-stopped
+    expose:
+      - 3773
+    volumes:
+      # T3 home (~/.t3), Claude Code and its login, git config, SSH keys.
+      - t3code-home:/home/t3
+      - t3code-workspace:/workspace
+
+volumes:
+  t3code-home:
+  t3code-workspace:

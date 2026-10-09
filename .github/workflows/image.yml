@@ -1,0 +1,111 @@
+name: image
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+  schedule:
+    # Look for a new upstream stable release every three hours.
+    - cron: "17 */3 * * *"
+
+permissions:
+  contents: write
+  packages: write
+
+concurrency:
+  group: image-${{ github.ref }}
+  cancel-in-progress: false
+
+env:
+  IMAGE: ghcr.io/${{ github.repository_owner }}/t3code
+
+jobs:
+  image:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v7
+
+      - name: Follow upstream stable release
+        id: track
+        if: github.event_name == 'schedule' || github.event_name == 'workflow_dispatch'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          latest="$(gh api repos/pingdotgg/t3code/releases/latest --jq .tag_name)"
+          latest="${latest#v}"
+          if ! [[ "$latest" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+            echo "unexpected upstream version: $latest" >&2
+            exit 1
+          fi
+          if [ "$latest" != "$(cat T3_VERSION)" ]; then
+            scripts/bump.sh "$latest"
+            echo "bumped=true" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Resolve version
+        id: version
+        run: echo "version=$(cat T3_VERSION)" >> "$GITHUB_OUTPUT"
+
+      # A scheduled run with nothing new stops here.
+      - name: Decide whether to build
+        id: gate
+        run: |
+          if [ "${{ github.event_name }}" = "schedule" ] && [ "${{ steps.track.outputs.bumped }}" != "true" ]; then
+            echo "build=false" >> "$GITHUB_OUTPUT"
+          else
+            echo "build=true" >> "$GITHUB_OUTPUT"
+          fi
+
+      - uses: docker/setup-qemu-action@v4
+        if: steps.gate.outputs.build == 'true'
+
+      - uses: docker/setup-buildx-action@v4
+        if: steps.gate.outputs.build == 'true'
+
+      - name: Build for smoke test
+        if: steps.gate.outputs.build == 'true'
+        uses: docker/build-push-action@v7
+        with:
+          context: .
+          platforms: linux/amd64
+          build-args: T3_VERSION=${{ steps.version.outputs.version }}
+          load: true
+          tags: t3code:smoke
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+      - name: Smoke test
+        if: steps.gate.outputs.build == 'true'
+        run: scripts/smoke-test.sh t3code:smoke
+
+      - uses: docker/login-action@v4
+        if: steps.gate.outputs.build == 'true' && github.event_name != 'pull_request'
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ github.token }}
+
+      - name: Build and push
+        if: steps.gate.outputs.build == 'true' && github.event_name != 'pull_request'
+        uses: docker/build-push-action@v7
+        with:
+          context: .
+          platforms: linux/amd64,linux/arm64
+          build-args: T3_VERSION=${{ steps.version.outputs.version }}
+          push: true
+          tags: |
+            ${{ env.IMAGE }}:${{ steps.version.outputs.version }}
+            ${{ env.IMAGE }}:latest
+          labels: org.opencontainers.image.source=https://github.com/${{ github.repository }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+      # Pushed with the workflow token, so it does not trigger another run.
+      - name: Commit version bump
+        if: steps.track.outputs.bumped == 'true'
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git commit -am "chore: track T3 Code ${{ steps.version.outputs.version }}"
+          git push

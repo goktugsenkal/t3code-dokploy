@@ -1,0 +1,68 @@
+# t3code-dokploy
+
+A Docker image and Dokploy template for the [T3 Code](https://t3.codes) server.
+
+The image unpacks upstream's official self-contained release archive
+(`t3-<version>-linux-<arch>.tar.gz`, checked against the release's
+`SHA256SUMS`) and adds Claude Code. Nothing in T3 Code is patched or rebuilt.
+
+- Image: `ghcr.io/goktugsenkal/t3code:<t3 version>`, for amd64 and arm64
+- Runs `t3 serve --host 0.0.0.0 --port 3773` as user `t3` (uid 1000)
+- Volumes: `/home/t3` (T3 home, Claude Code and its login, git config, SSH keys)
+  and `/workspace` (projects)
+
+## Deploy on Dokploy
+
+1. Create a **Compose** service, open **Advanced → Import**, and paste the
+   output of `scripts/dokploy-import.sh`. Or paste
+   `blueprint/t3code/docker-compose.yml` and add a domain for service `t3code`,
+   port `3773`, with HTTPS.
+2. Deploy.
+3. Pair your browser. In the service's **Terminal**, run:
+
+   ```sh
+   t3 auth pairing create --base-url https://<your-domain>
+   ```
+
+   and open the printed link. The startup log also prints a token; it works as
+   `https://<your-domain>/pair#token=<token>`, but its connection string shows
+   the container's internal address. Treat pairing links as passwords.
+4. Sign in to Claude in the same terminal:
+
+   ```sh
+   claude auth login
+   ```
+
+5. Set your git identity, and add an SSH key if you clone private repos:
+
+   ```sh
+   git config --global user.name "…"
+   git config --global user.email "…"
+   ssh-keygen -t ed25519
+   ```
+
+Then add a project under `/workspace` from the T3 Code UI. The desktop app,
+mobile app, and [app.t3.codes](https://app.t3.codes) can pair with the same
+domain.
+
+## Updating
+
+CI checks upstream every three hours. On a new stable release it builds,
+smoke-tests, pushes `ghcr.io/goktugsenkal/t3code:<version>`, and commits the
+version bump here. Change the image tag in Dokploy and redeploy. The in-app
+**Update server** action does not apply to this container.
+
+Clients newer than the server are refused, and the desktop and mobile apps
+update themselves, so don't let the server fall far behind.
+
+Claude Code lives in the home volume and updates itself, including from
+**Settings → Providers** in T3 Code.
+
+## Local test
+
+```sh
+docker compose up --build
+scripts/smoke-test.sh <image>
+```
+
+`scripts/bump.sh <version>` points every file at another upstream version.

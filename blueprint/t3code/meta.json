@@ -1,0 +1,19 @@
+{
+  "id": "t3code",
+  "name": "T3 Code",
+  "version": "0.0.45",
+  "description": "T3 Code is a minimal GUI for coding agents. This template runs the T3 Code server with Claude Code installed; pair a browser, the desktop app, or the mobile app with it and drive agents from anywhere.",
+  "logo": "t3code.svg",
+  "links": {
+    "github": "https://github.com/pingdotgg/t3code",
+    "website": "https://t3.codes",
+    "docs": "https://github.com/pingdotgg/t3code/tree/main/docs/user"
+  },
+  "tags": [
+    "ai",
+    "coding",
+    "agent",
+    "development",
+    "self-hosted"
+  ]
+}
