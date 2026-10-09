@@ -15,39 +15,57 @@ cleanup() {
 }
 trap cleanup EXIT
 
+# Pairing tokens are credentials, even for a throwaway container.
+redacted_logs() {
+  docker logs "$name" 2>&1 \
+    | grep -vE '^[ ▀▄█]+$' \
+    | sed -E 's/(token=|Token: ).*/\1<redacted>/'
+}
+
+fail() {
+  echo "--- container logs" >&2
+  redacted_logs >&2 || true
+  echo "smoke test failed: $*" >&2
+  exit 1
+}
+
+run() {
+  timeout 60 docker exec "$name" "$@"
+}
+
 docker run -d --name "$name" -p "127.0.0.1:${port}:3773" \
   -v "$name-home:/home/t3" -v "$name-workspace:/workspace" \
   "$image" >/dev/null
 
 # The pairing URL can print a moment before the listener is up.
 ready=false
-for _ in $(seq 1 90); do
-  if curl -fsS "$base/.well-known/t3/environment" >/dev/null 2>&1 \
-    && docker logs "$name" 2>&1 | grep -q "Pairing URL:"; then
-    ready=true
-    break
+for i in $(seq 1 90); do
+  if curl -fsS --max-time 5 "$base/.well-known/t3/environment" >/dev/null 2>&1; then
+    logs="$(docker logs "$name" 2>&1)"
+    if [[ "$logs" == *"Pairing URL:"* ]]; then
+      ready=true
+      break
+    fi
   fi
   if [ "$(docker inspect -f '{{.State.Running}}' "$name")" != "true" ]; then
-    break
+    fail "container exited"
   fi
+  [ $((i % 15)) -eq 0 ] && echo "waiting for server (${i}s)"
   sleep 1
 done
+[ "$ready" = true ] || fail "server not ready after 90s"
+echo "server ready"
 
-if [ "$ready" != true ]; then
-  docker logs "$name" >&2
-  echo "server did not become ready" >&2
-  exit 1
-fi
-
-curl -fsS "$base/.well-known/t3/environment" | jq -e '.serverVersion' >/dev/null
-curl -fsS "$base/" >/dev/null
-docker exec "$name" t3 auth pairing create --base-url https://example.com | grep -q "https://example.com/pair#token="
-docker exec "$name" t3 --version
-docker exec "$name" claude --version
+curl -fsS --max-time 10 "$base/.well-known/t3/environment" | jq -e '.serverVersion' >/dev/null \
+  || fail "environment descriptor"
+curl -fsS --max-time 10 "$base/" >/dev/null || fail "web UI"
+run t3 auth pairing create --base-url https://example.com | grep -q "https://example.com/pair#token=" \
+  || fail "pairing link"
+run t3 --version || fail "t3 --version"
+run claude --version || fail "claude --version"
 if docker logs "$name" 2>&1 | grep -q "Claude Code not found"; then
-  echo "Claude Code was not seeded into the home volume" >&2
-  exit 1
+  fail "Claude Code was not seeded into the home volume"
 fi
-[ "$(docker exec "$name" id -u)" != "0" ]
+[ "$(run id -u)" != "0" ] || fail "running as root"
 
 echo "smoke test passed: $image"
