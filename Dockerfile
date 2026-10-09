@@ -53,12 +53,6 @@ RUN useradd --create-home --shell /bin/bash --uid 1000 t3 \
 
 COPY --chmod=755 docker-entrypoint.sh /usr/local/bin/docker-entrypoint.sh
 
-# Runs gh as a GitHub App when GITHUB_APP_* is set; plain gh otherwise. git
-# asks it for GitHub credentials first and falls back to any helper the user
-# configures when it has none.
-COPY --chmod=755 gh-app-wrapper.sh /usr/local/bin/gh
-RUN git config --system 'credential.https://github.com.helper' '!/usr/local/bin/gh auth git-credential'
-
 # Claude Code refuses to skip permission prompts as root, so everything runs as
 # an ordinary user whose home is the persistent volume.
 USER t3

@@ -61,7 +61,6 @@ curl -fsS --max-time 10 "$base/.well-known/t3/environment" | jq -e '.serverVersi
 curl -fsS --max-time 10 "$base/" >/dev/null || fail "web UI"
 run t3 auth pairing create --base-url https://example.com | grep -q "https://example.com/pair#token=" \
   || fail "pairing link"
-[ "$(run sh -c "command -v gh")" = /usr/local/bin/gh ] || fail "gh wrapper is not first on PATH"
 run t3 --version || fail "t3 --version"
 run claude --version || fail "claude --version"
 gh_version="$(run gh --version | awk 'NR == 1 { print $3 }')"
