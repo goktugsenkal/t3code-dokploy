@@ -41,23 +41,58 @@ patched or rebuilt.
    git config --global user.email "…"
    ```
 
-6. Sign in to GitHub. T3 Code uses `gh` for pull requests and repository
-   lists; `gh auth setup-git` lets git clone and push with the same login:
+6. Connect GitHub, either as a [GitHub App](#github-app) (an organization's
+   server, acting as its own bot account) or as a person:
 
    ```sh
-   gh auth login
-   gh auth setup-git
+   gh auth login --with-token   # paste the token, Enter, then Ctrl+D
    ```
 
-   Choose GitHub.com and HTTPS, then sign in with the browser code or paste a
-   token. For an organization's private repositories, a fine-grained token
-   needs the organization as its resource owner and read/write access to
-   Contents and Pull requests (and Workflows, if agents edit workflow files).
-   Then choose **Settings → Source Control → Rescan** in T3 Code.
+   A token acts as the account that created it, even when its resource owner
+   is an organization. Either way, choose **Settings → Source Control →
+   Rescan** in T3 Code afterwards.
 
 Then add a project under `/workspace` from the T3 Code UI. The desktop app,
 mobile app, and [app.t3.codes](https://app.t3.codes) can pair with the same
 domain.
+
+## GitHub App
+
+With a GitHub App, pull requests, pushes, and commits come from the app's bot
+account (`<app-name>[bot]`) instead of a person. The image's `gh` mints the
+app's short-lived installation tokens on demand, and git uses the same token
+for clone and push.
+
+1. In the organization's **Settings → Developer settings → GitHub Apps**,
+   create a **New GitHub App**:
+   - Homepage URL: anything, such as the server's domain
+   - Webhook: clear **Active**
+   - Repository permissions: Contents, Pull requests: read and write.
+     Checks, Commit statuses, Issues: read. Workflows: read and write, if
+     agents may edit `.github/workflows`.
+   - Where can this GitHub App be installed: **Only on this account**
+2. On the app's page, note the **App ID** and **Generate a private key**.
+3. **Install App** on the organization, for the repositories the server
+   should work on.
+4. In Dokploy, set the service's environment and redeploy:
+
+   ```
+   GITHUB_APP_ID=<app id>
+   GITHUB_APP_PRIVATE_KEY=<the .pem file, base64-encoded>
+   ```
+
+   Encode the key with `base64 -w0 key.pem`, or in PowerShell with
+   `[Convert]::ToBase64String([IO.File]::ReadAllBytes("key.pem"))`. Set
+   `GITHUB_APP_INSTALLATION_ID` only if the app is installed on more than one
+   account.
+
+The startup log then shows `GitHub: signed in as <app-name>[bot]`. If git has
+no identity yet, commits are attributed to the bot; to switch an existing
+identity, run `git config --global --unset user.name`, the same for
+`user.email`, and redeploy.
+
+Anything that runs in the container, agents included, can act as the app, so
+install it only on the repositories the server needs.
 
 ## Updating
 

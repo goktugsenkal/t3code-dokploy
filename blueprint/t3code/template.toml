@@ -9,3 +9,10 @@ host = "${main_domain}"
 https = true
 
 [config.env]
+# Optional GitHub App, so the server acts on GitHub as the app instead of a
+# person. Leave GITHUB_APP_ID empty to use `gh auth login` instead.
+GITHUB_APP_ID = ""
+# Optional when the app is installed on a single account.
+GITHUB_APP_INSTALLATION_ID = ""
+# The app's private key (.pem), base64-encoded: base64 -w0 key.pem
+GITHUB_APP_PRIVATE_KEY = ""

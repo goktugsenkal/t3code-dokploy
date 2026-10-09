@@ -6,6 +6,11 @@ services:
     restart: unless-stopped
     expose:
       - 3773
+    environment:
+      # Optional: act on GitHub as a GitHub App instead of a personal login.
+      - GITHUB_APP_ID=${GITHUB_APP_ID:-}
+      - GITHUB_APP_INSTALLATION_ID=${GITHUB_APP_INSTALLATION_ID:-}
+      - GITHUB_APP_PRIVATE_KEY=${GITHUB_APP_PRIVATE_KEY:-}
     volumes:
       # T3 home (~/.t3), Claude Code and its login, git config, SSH keys.
       - t3code-home:/home/t3

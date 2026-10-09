@@ -1,2 +1,3 @@
 *
 !docker-entrypoint.sh
+!gh-app-wrapper.sh
