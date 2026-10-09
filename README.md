@@ -4,12 +4,13 @@ A Docker image and Dokploy template for the [T3 Code](https://t3.codes) server.
 
 The image unpacks upstream's official self-contained release archive
 (`t3-<version>-linux-<arch>.tar.gz`, checked against the release's
-`SHA256SUMS`) and adds Claude Code. Nothing in T3 Code is patched or rebuilt.
+`SHA256SUMS`) and adds Claude Code and the GitHub CLI. Nothing in T3 Code is
+patched or rebuilt.
 
 - Image: `ghcr.io/goktugsenkal/t3code:<t3 version>`, for amd64 and arm64
 - Runs `t3 serve --host 0.0.0.0 --port 3773` as user `t3` (uid 1000)
-- Volumes: `/home/t3` (T3 home, Claude Code and its login, git config, SSH keys)
-  and `/workspace` (projects)
+- Volumes: `/home/t3` (T3 home, Claude Code, logins, git config, SSH keys) and
+  `/workspace` (projects)
 
 ## Deploy on Dokploy
 
@@ -33,13 +34,26 @@ The image unpacks upstream's official self-contained release archive
    claude auth login
    ```
 
-5. Set your git identity, and add an SSH key if you clone private repos:
+5. Set your git identity:
 
    ```sh
    git config --global user.name "…"
    git config --global user.email "…"
-   ssh-keygen -t ed25519
    ```
+
+6. Sign in to GitHub. T3 Code uses `gh` for pull requests and repository
+   lists; `gh auth setup-git` lets git clone and push with the same login:
+
+   ```sh
+   gh auth login
+   gh auth setup-git
+   ```
+
+   Choose GitHub.com and HTTPS, then sign in with the browser code or paste a
+   token. For an organization's private repositories, a fine-grained token
+   needs the organization as its resource owner and read/write access to
+   Contents and Pull requests (and Workflows, if agents edit workflow files).
+   Then choose **Settings → Source Control → Rescan** in T3 Code.
 
 Then add a project under `/workspace` from the T3 Code UI. The desktop app,
 mobile app, and [app.t3.codes](https://app.t3.codes) can pair with the same
@@ -51,6 +65,9 @@ CI checks upstream every three hours. On a new stable release it builds,
 smoke-tests, pushes `ghcr.io/goktugsenkal/t3code:<version>`, and commits the
 version bump here. Change the image tag in Dokploy and redeploy. The in-app
 **Update server** action does not apply to this container.
+
+Packaging changes are re-pushed under the same T3 Code version tag. The
+template's `pull_policy: always` makes a plain redeploy pick them up.
 
 Clients newer than the server are refused, and the desktop and mobile apps
 update themselves, so don't let the server fall far behind.

@@ -63,6 +63,9 @@ run t3 auth pairing create --base-url https://example.com | grep -q "https://exa
   || fail "pairing link"
 run t3 --version || fail "t3 --version"
 run claude --version || fail "claude --version"
+gh_version="$(run gh --version | awk 'NR == 1 { print $3 }')"
+[ "$(printf '%s\n' 2.81.0 "$gh_version" | sort -V | head -n 1)" = 2.81.0 ] \
+  || fail "gh ${gh_version:-missing} is older than 2.81.0"
 if docker logs "$name" 2>&1 | grep -q "Claude Code not found"; then
   fail "Claude Code was not seeded into the home volume"
 fi

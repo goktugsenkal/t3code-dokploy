@@ -15,6 +15,18 @@ RUN apt-get update \
       bash ca-certificates curl git git-lfs jq less libatomic1 openssh-client procps tini unzip xz-utils \
  && rm -rf /var/lib/apt/lists/*
 
+# GitHub CLI from GitHub's own apt repository; Debian's package is older than
+# the 2.81.0 T3 Code needs for its GitHub features.
+RUN mkdir -p -m 755 /etc/apt/keyrings \
+ && curl -fsSL https://cli.github.com/packages/githubcli-archive-keyring.gpg \
+      -o /etc/apt/keyrings/githubcli-archive-keyring.gpg \
+ && chmod go+r /etc/apt/keyrings/githubcli-archive-keyring.gpg \
+ && echo "deb [arch=$(dpkg --print-architecture) signed-by=/etc/apt/keyrings/githubcli-archive-keyring.gpg] https://cli.github.com/packages stable main" \
+      > /etc/apt/sources.list.d/github-cli.list \
+ && apt-get update \
+ && apt-get install -y --no-install-recommends gh \
+ && rm -rf /var/lib/apt/lists/*
+
 # The archive's native modules are glibc builds, which is why this is Debian
 # and not Alpine. It lives outside the T3 home so the in-app updater treats it
 # as a plain copy and never writes into the data volume.
