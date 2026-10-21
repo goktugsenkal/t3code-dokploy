@@ -1,6 +1,6 @@
 services:
   t3code:
-    image: ghcr.io/goktugsenkal/t3code:0.1.0
+    image: ghcr.io/goktugsenkal/t3code:0.1.1
     # The tag is re-pushed when the packaging changes; redeploy picks that up.
     pull_policy: always
     restart: unless-stopped
