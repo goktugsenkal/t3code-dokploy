@@ -12,7 +12,7 @@ ENV DEBIAN_FRONTEND=noninteractive
 
 RUN apt-get update \
  && apt-get install -y --no-install-recommends \
-      bash ca-certificates curl git git-lfs jq less libatomic1 openssh-client procps tini unzip xz-utils \
+      bash ca-certificates curl git git-lfs jq less libatomic1 nano openssh-client procps tini unzip xz-utils \
  && rm -rf /var/lib/apt/lists/*
 
 # GitHub CLI from GitHub's own apt repository; Debian's package is older than
